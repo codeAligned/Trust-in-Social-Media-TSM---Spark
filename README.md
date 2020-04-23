@@ -1,3 +1,7 @@
-```networkx_TSM.py``` - original Python algorithm for calculating Trust In Social Media
-```network_tsm_graphframe.py``` - PySpark version of TSM algorithm using GraphFrame (still in progress)
-```test_network.txt``` - Network data file
+```networkx_TSM.py```:
+<p>original Python algorithm for calculating Trust In Social Media</p>
+```network_tsm_graphframe.py```:
+<p>PySpark version of TSM algorithm using GraphFrame (still in progress)</p>
+<p>Command to run : ```spark-submit network_tsm_graphframe.py```</p>
+
+```test_network.txt``` - <p>Network data file</p>

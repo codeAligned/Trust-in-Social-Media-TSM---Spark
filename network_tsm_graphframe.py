@@ -3,6 +3,8 @@ from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 from pyspark.sql.functions import *
 from graphframes import *
+from itertools import chain
+import math
 
 #initalize SparkContext, SparkSession and SQLContext
 sc = SparkContext()
@@ -16,13 +18,11 @@ normChoice = 1
 
 #read file
 edges= spark.read.format("csv").option("delimiter","\t").load("test_network.txt").withColumnRenamed("_c0","src").withColumnRenamed("_c1","dst")
-#edges = edges_rdd.map(lambda x: (x, )).toDF().withColumnRenamed("_1","dst")
-#edges.show()
 
 if len(edges.columns) == 3:
-	edges = edges.withColumnRenamed("_c2","weight")
+   edges = edges.withColumnRenamed("_c2","weight")
 else:
-	edges = edges.withColumn("weight", lit(1))
+   edges = edges.withColumn("weight", lit(1))
 
 #Step 1: Create a graph using given file where each line represents an edge
 
@@ -34,13 +34,12 @@ vertices = temp1.unionByName(temp2).distinct()
 
 #number of vertices
 num_vertices = vertices.count()
-print('Number of vertices: ',str(num_vertices))
+# print('Number of vertices: ',str(num_vertices))
 
 # Create a GraphFrame
 g = GraphFrame(vertices, edges)
-g.vertices.show()
-g.edges.show()
-
+# g.vertices.show()
+# g.edges.show()
 
 #Step 2: Get number of vertices and intialize the score for each node
 
@@ -53,27 +52,74 @@ intial_score = 1 /float(num_vertices)
 
 v = vertices.select("id").collect()
 for node in v:
-	hti[node.id] = intial_score
-	htw[node.id] = intial_score
+   hti[node.id] = intial_score
+   htw[node.id] = intial_score
 
-print(type(hti))
-print(hti)
+# print(type(hti))
+# print(hti)
 
 #Step 3: Calculate scores
-i = 0
-while(i < iter_count):
- for node in vertices:
-         #"""Calculate Scores for Trustingness"""
-         # vsti = g.neighbors(node, mode=OUT)
-         vsti = [ind[1] for ind in G.out_edges(node)]
-         sc = calcScores(vsti, hti.get(node), node, htw, 'ti')
-         hti[node] = sc
 
- for node in vertices:
+def calcScores(vs, s, n, other_sc, flag):
+   if flag == 'ti':
+      for src, dst, weight in vs.collect():
+         # print(src,dst)
+         s += inver(other_sc.get(dst)) * weight
+   elif flag == 'tw':
+      for src, dst, weight in vs.collect():
+         # print(src,dst)
+         s += inver(other_sc.get(src)) * weight
+   return s
+
+
+def inver(a):
+ return 1/float(1+a**inv)
+
+i = 0
+
+while(i < iter_count):
+   for node in v:
+         #"""Calculate Scores for Trustingness"""
+         #vsti = g.neighbors(node, mode=OUT)
+         out_edges = g.edges.filter("src = "+node.id)
+         sc = calcScores(out_edges, hti.get(node.id), node.id, htw, 'ti')
+         hti[node.id] = sc
+
+   for node in v:
          #"""Calculate Scores for Trustworthiness"""
          # vstw = g.neighbors(node, mode=IN)
-         vstw = [ind[0] for ind in G.in_edges(node)]
-         sc = calcScores(vstw, htw.get(node), node, hti, 'tw')
-         htw[node] = sc
+         in_edges = g.edges.filter("dst = "+node.id)
+         sc = calcScores(in_edges, htw.get(node.id), node.id, hti, 'tw')
+         htw[node.id] = sc
 
- i += 1
+   i += 1
+
+
+#Step 4: Normalize
+def normalize(userScores, choice):
+   values = userScores.values()
+   columns = "Double"
+   df = spark.createDataFrame(values, columns)
+   # df.show()
+   min_val = array_min(df["value"])
+   max_val = array_max(df["value"])
+   if choice == 0:  # min-max
+      for user in userScores:
+         userScores[user] = (userScores[user] - min_val)/float(max_val - min_val)
+
+   elif choice == 1: # sum-of-squares
+      df = df.withColumn("sq_val", df.value * df.value)
+      norm_den = df.select(sum("sq_val").alias("sum")).first().sum
+      print(norm_den)
+      norm_den = math.sqrt(norm_den)
+      print(norm_den)
+      for user in userScores:
+         userScores[user] = userScores[user]/float(norm_den)
+
+   return userScores
+
+norm_hti = normalize(hti, normChoice)
+norm_htw = normalize(htw, normChoice)
+
+print(norm_hti)
+print(norm_htw)
