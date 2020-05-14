@@ -19,7 +19,8 @@ iter_count = 10
 delimiter = "\t"
 normChoice = 1
 
-# #read file
+# ````Read graph as RDD````
+
 # edges= sc.textFile(os.path.dirname(os.path.abspath(__file__)) + "/network2.txt")
 # v1 = edges.map(lambda e : e.split(delimiter)[0])
 # v2 = edges.map(lambda e : e.split(delimiter)[1])
@@ -38,6 +39,7 @@ normChoice = 1
 
 # outlinks_rdd = sc.parallelize(out_links_map)
 
+# ````Read graph as DiGraph````
 G = nx.DiGraph()
 
 #Step 1: Create a graph using given file where each line represents an edge

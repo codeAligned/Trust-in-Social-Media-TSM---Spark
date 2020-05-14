@@ -25,7 +25,7 @@ with open('network2.txt') as infile:
     #print('infile')
     for line in infile:
         #print (line)
-        l_spl = re.split('\t', line.rstrip())
+        l_spl = re.split(delimiter, line.rstrip())
         if len(l_spl) == 3:
             # G.add_weighted_edges_from(l_spl[0], l_spl[1], float(l_spl[2]))
             G.add_edge(int(l_spl[0]), int(l_spl[1]), weight = float(l_spl[2]))
@@ -34,8 +34,7 @@ with open('network2.txt') as infile:
             G.add_edge(int(l_spl[0]), int(l_spl[1]), weight=1)
     vertices = G.nodes()
     edges = G.edges()
-    # print('vertices inside ',str(vertices))
-    # print(edges)
+
 
 #Step 2: Get number of vertices and intialize the score for each node
 vertices = G.nodes()
